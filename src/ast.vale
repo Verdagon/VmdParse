@@ -1,10 +1,11 @@
+import stdlib.collections.list.*;
 
 struct Page {
   metadata Metadata;
   members List<PageMember>;
 }
 
-interface PageMember {}
+sealed interface PageMember {}
 
 struct Metadata {
   title StrSlice;
@@ -18,6 +19,7 @@ struct Metadata {
   layout StrSlice;
   namespace StrSlice;
   cssFiles List<StrSlice>;
+  sponsorLink bool;
 }
 
 
@@ -36,7 +38,7 @@ impl PageMember for Slice;
 
 
 
-interface SectionMember {}
+sealed interface SectionMember {}
 
 struct Paragraph {
   contents InlineNode;
@@ -89,7 +91,7 @@ struct PolyList {
 }
 impl SectionMember for PolyList;
 
-interface ListMember {}
+sealed interface ListMember {}
 impl ListMember for PolyList;
 
 struct ListItem {
@@ -98,7 +100,7 @@ struct ListItem {
 impl ListMember for ListItem;
 
 
-interface InlineNode {}
+sealed interface InlineNode {}
 
 struct Compound { inners List<InlineNode>; }
 impl InlineNode for Compound;
@@ -109,9 +111,12 @@ impl InlineNode for Bold;
 struct Link {
   text StrSlice;
   url StrSlice;
+  classes List<StrSlice>;
 }
 impl InlineNode for Link;
-fn copy(link &Link) Link { Link(link.text, link.url) }
+func clone(link &Link) Link {
+  Link(link.text, link.url, link.classes.clone())
+}
 
 struct Italic { inner InlineNode; }
 impl InlineNode for Italic;

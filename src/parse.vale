@@ -1,3 +1,5 @@
+import stdlib.collections.list.*;
+import stdlib.ifunction.*;
 
 struct NotesCollector {
   nextId! int;
@@ -6,7 +8,7 @@ struct NotesCollector {
   nameById HashMap<int, StrSlice, IntHasher, IntEquator>;
   noteContentsById HashMap<int, Section, IntHasher, IntEquator>;
 }
-fn NotesCollector(nextId int) NotesCollector {
+func NotesCollector(nextId int) NotesCollector {
   NotesCollector(
     nextId,
     List<int>(),
@@ -15,492 +17,508 @@ fn NotesCollector(nextId int) NotesCollector {
     HashMap<int, StrSlice, IntHasher, IntEquator>(IntHasher(), IntEquator()),
     HashMap<int, Section, IntHasher, IntEquator>(IntHasher(), IntEquator()))
 }
-fn Slice(newColor StrSlice, notesCollector NotesCollector) Slice {
-  (nextId, ids, idByName, nameById, noteContentsById) = notesCollector;
-  ret Slice(ids, newColor, noteContentsById);
+func Slice(newColor StrSlice, notesCollector NotesCollector) Slice {
+  [nextId, ids, idByName, nameById, noteContentsById] = notesCollector;
+  return Slice(ids, newColor, noteContentsById);
 }
 
 
-fn parse(filepath str) Page {
+func parse(filepath str) Page {
   s = readFileAsString(filepath);
-  iter = ParseIter(s.slice(), true);
+  iter = ParseIter(s.slice());
   
-  metadata = parseMetadata(&!iter);
+  metadata = parseMetadata(&iter);
 
-  notesCollector! = NotesCollector(0);
+  notesCollector = NotesCollector(0);
 
   pageMembers = List<PageMember>();
 
-  while (iter.hasNext()) {
-    iter!.skipNewlines();
+  while iter.hasNext() {
+    iter.skipNewlines();
 
-    if (iter.nextIs("<slice")) {
-      pageMembers!.add(
+    if iter.nextIs("<slice") {
+      pageMembers.add(
           parseSlice(
-              mut notesCollector = NotesCollector(notesCollector.nextId),
-              &!iter));
+              set notesCollector = NotesCollector(notesCollector.nextId),
+              &iter));
     } else {
       section =
           parseSection(
-              &!notesCollector,
-              &!iter,
-              &!IFunction1<mut, &!ParseIter, bool>((iter){
-                ret iter.hasNext() and not iter.nextIs("<slice") and not iter.nextIs("\n\n\n");
+              &notesCollector,
+              &iter,
+              &IFunction1<mut, &ParseIter, bool>((iter) => {
+                return iter.hasNext() and not iter.nextIs("<slice") and not iter.nextIs("\n\n\n");
               }));
-      pageMembers!.add(section);
+      pageMembers.add(section);
     }
   }
 
-  pageMembers!.add(
+  pageMembers.add(
       Slice(
           "".slice(),
-          mut notesCollector = NotesCollector(notesCollector.nextId)));
+          set notesCollector = NotesCollector(notesCollector.nextId)));
 
-  ret Page(metadata, pageMembers);
+  return Page(metadata, pageMembers);
 }
 
 
-fn parseMetadata(input &!ParseIter) Metadata {
-  title! = "".slice();
-  subtitle! = "".slice();
-  author! = "".slice();
-  date! = "".slice();
-  realm! = "".slice();
-  path! = "".slice();
-  namespace! = "".slice();
-  layout! = "".slice();
-  seriesName! = "".slice();
+func parseMetadata(input &ParseIter) Metadata {
+  title = "".slice();
+  subtitle = "".slice();
+  author = "".slice();
+  date = "".slice();
+  realm = "".slice();
+  path = "".slice();
+  namespace = "".slice();
+  layout = "".slice();
+  seriesName = "".slice();
+  sponsorLink = false;
   seriesEntries = List<Link>();
   cssFiles = List<StrSlice>();
 
-  if (input!.skipIfNext("---\n")) {
-    while (not input!.skipIfNext("---\n")) {
-      attrName = input!.getUntilExpected(":");
-      input!.skipWhitespace();
+  if input.skipIfNext("---\n") {
+    while not input.skipIfNext("---\n") {
+      attrName = input.getUntilExpected(":");
+      input.skipWhitespace();
 
-      if (attrName == "title") {
-        mut title = input!.getUntilExpected("\n");
-      } else if (attrName == "subtitle") {
-        mut subtitle = input!.getUntilExpected("\n");
-      } else if (attrName == "author") {
-        mut author = input!.getUntilExpected("\n");
-      } else if (attrName == "date") {
-        mut date = input!.getUntilExpected("\n");
-      } else if (attrName == "realm") {
-        mut realm = input!.getUntilExpected("\n");
-      } else if (attrName == "path") {
-        mut path = input!.getUntilExpected("\n");
-      } else if (attrName == "namespace") {
-        mut namespace = input!.getUntilExpected("\n");
-      } else if (attrName == "layout") {
-        mut layout = input!.getUntilExpected("\n");
-      } else if (attrName == "series-name") {
-        mut seriesName = input!.getUntilExpected("\n");
-      } else if (attrName == "css") {
-        cssFiles!.add(input!.getUntilExpected("\n"));
-      } else if (attrName == "series-entry") {
-        seriesEntries!.add(addLink(&!input));
-        input!.skipExpect("\n");
+      if attrName == "title" {
+        set title = input.getUntilExpected("\n");
+      } else if attrName == "subtitle" {
+        set subtitle = input.getUntilExpected("\n");
+      } else if attrName == "author" {
+        set author = input.getUntilExpected("\n");
+      } else if attrName == "date" {
+        set date = input.getUntilExpected("\n");
+      } else if attrName == "realm" {
+        set realm = input.getUntilExpected("\n");
+      } else if attrName == "path" {
+        set path = input.getUntilExpected("\n");
+      } else if attrName == "namespace" {
+        set namespace = input.getUntilExpected("\n");
+      } else if attrName == "layout" {
+        set layout = input.getUntilExpected("\n");
+      } else if attrName == "sponsor" {
+        input.getUntilExpected("\n");
+        set sponsorLink = true;
+      } else if attrName == "series-name" {
+        set seriesName = input.getUntilExpected("\n");
+      } else if attrName == "css" {
+        cssFiles.add(input.getUntilExpected("\n"));
+      } else if attrName == "series-entry" {
+        seriesEntries.add(addLink(&input, true));
+        input.skipExpect("\n");
       } else {
         panic("Unknown attribute: " + attrName);
       }
     }
   }
 
-  if (seriesEntries.len() > 0) {
+  if seriesEntries.len() > 0 {
     // A series link with an empty url represents the current page
-    foundEmptyLink! = false;
-    seriesEntries.each((link){
-      if (link.text == "" and link.url == "") {
+    foundEmptyLink = false;
+    foreach link in &seriesEntries {
+      if link.text == "" and link.url == "" {
         vassert(not foundEmptyLink, "Already an empty series entry!");
-        mut foundEmptyLink = true;
+        set foundEmptyLink = true;
       }
-    });
+    }
     vassert(foundEmptyLink, "No empty series entry!");
   }
 
-  ret Metadata(title, subtitle, author, date, realm, path, seriesName, seriesEntries, layout, namespace, cssFiles);
+  return Metadata(title, subtitle, author, date, realm, path, seriesName, seriesEntries, layout, namespace, cssFiles, sponsorLink);
 }
 
 
-fn getListItemPrefix(style str) str {
-  = if (style == "bullet") { " * " }
-    else if (style == "ordered") { " 1. " }
-    else if (style == "blank") { " . " }
-    else { panic("unknown list style") }
+func getListItemPrefix(style str) str {
+  if style == "bullet" { " * " }
+  else if style == "ordered" { " 1. " }
+  else if style == "blank" { " . " }
+  else { panic("unknown list style") }
 }
 
 
-fn nextIsListItem(originalIter &!ParseIter, style str) bool {
+func skipListItemPrefix(iter &ParseIter) {
+  if iter.skipIfNext(" * ") { }
+  else if iter.skipIfNext(" 1. ") { }
+  else if iter.skipIfNext(" . ") { }
+  else { panic ("Expected list item prefix!"); }
+}
+
+
+func nextIsListItem(originalIter &ParseIter, style str) bool {
   lookaheadIter = copy(&originalIter);
-  lookaheadIter!.skipNewlines();
-  while (lookaheadIter!.skipIfNext("   ")) { }
-  ret lookaheadIter.nextIs(getListItemPrefix(style));
+  lookaheadIter.skipNewlines();
+  while lookaheadIter.skipIfNext("   ") { }
+  return lookaheadIter.nextIs(getListItemPrefix(style));
 }
 
 
-fn parseList(
-    notesCollector &!NotesCollector,
-    iter &!ParseIter,
-    continueF &!IFunction1<mut, &!ParseIter, bool>)
+func parseList(
+    notesCollector &NotesCollector,
+    iter &ParseIter,
+    continueF &IFunction1<mut, &ParseIter, bool>)
 PolyList {
   style =
-      if (iter.nextIs(" 1. ")) { "ordered" }
-      else if (iter.nextIs(" * ")) { "bullet" }
-      else if (iter.nextIs(" . ")) { "blank" }
+      if iter.nextIs(" 1. ") { "ordered" }
+      else if iter.nextIs(" * ") { "bullet" }
+      else if iter.nextIs(" . ") { "blank" }
       else { panic("unknown list style") };
 
   rootList = PolyList(style, List<ListMember>());
   // A stack of all the currently open lists.
   openLists = List<&PolyList>();
-  openLists!.add(&rootList);
+  openLists.add(&rootList);
 
-  while (continueF!(iter) and iter!.nextIsListItem(style)) {
-    iter!.skipNewlines();
-    thisListItemIndentation! = 1;
-    while (iter!.skipIfNext("   ")) {
-      mut thisListItemIndentation = thisListItemIndentation + 1;
+  while continueF(iter) and iter.nextIsListItem(style) {
+    iter.skipNewlines();
+    thisListItemIndentation = 1;
+    while iter.skipIfNext("   ") {
+      set thisListItemIndentation = thisListItemIndentation + 1;
     }
-    iter!.skipExpect(getListItemPrefix(style));
+    skipListItemPrefix(iter);
 
-    while (thisListItemIndentation > openLists.len()) {
+    while thisListItemIndentation > openLists.len() {
       newList = PolyList(style, List<ListMember>());
       newListBorrow = &newList;
-      openLists!.get(openLists.len() - 1).members!.add(newList);
-      openLists!.add(newListBorrow);
+      openLists.get(openLists.len() - 1).members.add(newList);
+      openLists.add(newListBorrow);
     }
-    while (thisListItemIndentation < openLists.len()) {
-      openLists!.remove(openLists.len() - 1);
+    while thisListItemIndentation < openLists.len() {
+      openLists.remove(openLists.len() - 1);
     }
 
     lineContents =
         parseLine(
-            &!notesCollector,
-            &!iter,
-            &!IFunction1<mut, &!ParseIter, bool>((iter){
-              ret continueF!(iter) and not iter.nextIs("\n");
+            &notesCollector,
+            &iter,
+            &IFunction1<mut, &ParseIter, bool>((iter) => {
+              return continueF(iter) and not iter.nextIs("\n");
             }));
-    openLists!.get(openLists.len() - 1).members!.add(ListItem(lineContents));
+    openLists.get(openLists.len() - 1).members.add(ListItem(lineContents));
   }
 
-  ret rootList;
+  return rootList;
 }
 
 
-fn parseQuote(
-    notesCollector &!NotesCollector,
-    iter &!ParseIter,
-    continueF &!IFunction1<mut, &!ParseIter, bool>)
+func parseQuote(
+    notesCollector &NotesCollector,
+    iter &ParseIter,
+    continueF &IFunction1<mut, &ParseIter, bool>)
 Quote {
   inlines = List<InlineNode>();
 
-  while (continueF!(iter) and iter.nextIs("> ")) {
-    iter!.skipExpect("> ");
+  while continueF(iter) and iter.nextIs("> ") {
+    iter.skipExpect("> ");
 
     lineContents =
         parseInlines(
-            &!notesCollector,
-            &!iter,
-            &!IFunction1<mut, &!ParseIter, bool>((iter){
-              ret continueF!(iter) and not iter.nextIs("\n");
+            &notesCollector,
+            &iter,
+            &IFunction1<mut, &ParseIter, bool>((iter) => {
+              return continueF(iter) and not iter.nextIs("\n");
             }));
-    while (lineContents.inners.len() > 0) {
-      inlines!.add(lineContents.inners!.remove(0));
+    while lineContents.inners.len() > 0 {
+      inlines.add(lineContents.inners.remove(0));
     }
   }
 
-  ret Quote(Compound(inlines));
+  return Quote(Compound(inlines));
 }
 
-fn parseCallout(
-    notesCollector &!NotesCollector,
-    iter &!ParseIter,
-    continueF &!IFunction1<mut, &!ParseIter, bool>)
+func parseCallout(
+    notesCollector &NotesCollector,
+    iter &ParseIter,
+    continueF &IFunction1<mut, &ParseIter, bool>)
 Callout {
   inlines = List<InlineNode>();
 
-  while (continueF!(iter) and iter.nextIs("! ")) {
-    iter!.skipExpect("! ");
+  while continueF(iter) and iter.nextIs("! ") {
+    iter.skipExpect("! ");
 
     lineContents =
         parseInlines(
-            &!notesCollector,
-            &!iter,
-            &!IFunction1<mut, &!ParseIter, bool>((iter){
-              ret continueF!(iter) and not iter.nextIs("\n");
+            &notesCollector,
+            &iter,
+            &IFunction1<mut, &ParseIter, bool>((iter) => {
+              return continueF(iter) and not iter.nextIs("\n");
             }));
-    while (lineContents.inners.len() > 0) {
-      inlines!.add(lineContents.inners!.remove(0));
+    while lineContents.inners.len() > 0 {
+      inlines.add(lineContents.inners.remove(0));
     }
   }
 
-  ret Callout(Compound(inlines));
+  return Callout(Compound(inlines));
 }
 
 
-fn parseSplit(
-    notesCollector &!NotesCollector,
-    iter &!ParseIter)
+func parseSplit(
+    notesCollector &NotesCollector,
+    iter &ParseIter)
 Split {
-  iter!.skipExpect("<<<<");
-  iter!.skipNewlines();
+  iter.skipExpect("<<<<");
+  iter.skipNewlines();
 
   columns = List<List<Section>>();
 
-  running! = true;
-  while (running) {
+  running = true;
+  while running {
     innerContinueF =
-        IFunction1<mut, &!ParseIter, bool>((iter){
-          if (not iter.hasNext()) {
+        IFunction1<mut, &ParseIter, bool>((iter) => {
+          if not iter.hasNext() {
             panic("<<<< must end with \/\/\/\/");
           }
-          ret not iter.nextIs("\/\/\/\/") and not iter.nextIs(">>>>");
+          return not iter.nextIs("\/\/\/\/") and not iter.nextIs(">>>>");
         });
 
     columnSections = List<Section>();
 
-    while (innerContinueF!(iter)) {
-      columnSections!.add(
+    while innerContinueF(iter) {
+      columnSections.add(
           parseSection(
-              &!notesCollector,
-              &!iter,
-              &!IFunction1<mut, &!ParseIter, bool>((iter){
-                ret innerContinueF!(iter) and not iter.nextIs("\n\n\n");
+              &notesCollector,
+              &iter,
+              &IFunction1<mut, &ParseIter, bool>((iter) => {
+                return innerContinueF(iter) and not iter.nextIs("\n\n\n");
               })));
-      iter!.skipNewlines();
+      iter.skipNewlines();
     }
 
-    columns!.add(columnSections);
+    columns.add(columnSections);
 
-    mut running = iter!.skipIfNext("\/\/\/\/");
-    iter!.skipNewlines();
+    set running = iter.skipIfNext("\/\/\/\/");
+    iter.skipNewlines();
   }
 
-  iter!.skipNewlines();
-  iter!.skipExpect(">>>>");
+  iter.skipNewlines();
+  iter.skipExpect(">>>>");
 
-  ret Split(columns);
+  return Split(columns);
 }
 
 
-fn nextIsNoteBegin(originalIter &!ParseIter) bool {
+func nextIsNoteBegin(originalIter &ParseIter) bool {
   lookaheadIter = copy(&originalIter);
-  if (not lookaheadIter!.skipIfNext("\n\n")) {
-    ret false;
+  if not lookaheadIter.skipIfNext("\n\n") {
+    return false;
   }
-  lookaheadIter!.skipNewlines();
-  ret lookaheadIter!.skipIfNext("#");
+  lookaheadIter.skipNewlines();
+  return lookaheadIter.skipIfNext("#");
 }
 
 
-fn parseSlice(
+func parseSlice(
     notesCollector NotesCollector,
-    iter &!ParseIter)
+    iter &ParseIter)
 Slice {
-  iter!.skipExpect("<slice");
+  iter.skipExpect("<slice");
 
-  newColor! = "".slice();
-  if (iter!.skipIfNext(" new-color=\"")) {
-    mut newColor = iter!.getUntilExpected("\"");
+  newColor = "".slice();
+  if iter.skipIfNext(" new-color=\"") {
+    set newColor = iter.getUntilExpected("\"");
   }
-  if (iter!.skipIfNext(">")) {
-    iter!.skipNewlines();
+  if iter.skipIfNext(">") {
+    iter.skipNewlines();
 
     continueF =
-        IFunction1<mut, &!ParseIter, bool>((iter){
-          if (not iter.hasNext()) {
+        IFunction1<mut, &ParseIter, bool>((iter) => {
+          if not iter.hasNext() {
             panic("<slice> must end with </slice>");
           }
-          ret not iter.nextIs("</slice>");
+          return not iter.nextIs("</slice>");
         });
 
-    while (continueF!(iter)) {
-      iter!.skipNewlines();
-      iter!.skipExpect("#");
-      noteId = iter!.getUntilExpected(":");
+    while continueF(iter) {
+      iter.skipNewlines();
+      iter.skipExpect("#");
+      noteId = iter.getUntilExpected(":");
 
       noteOutput =
           parseSection(
-              &!notesCollector,
-              &!iter,
-              &!IFunction1<mut, &!ParseIter, bool>((iter){
-                ret continueF!(iter) and not iter!.nextIsNoteBegin();
+              &notesCollector,
+              &iter,
+              &IFunction1<mut, &ParseIter, bool>((iter) => {
+                return continueF(iter) and not iter.nextIsNoteBegin();
               }));
-      iter!.skipNewlines();
-      notesCollector!.addSeparateNote(noteId, noteOutput);
+      iter.skipNewlines();
+      notesCollector.addSeparateNote(noteId, noteOutput);
     }
 
-    iter!.skipIfNext("</slice>");
-  } else if (iter!.skipIfNext("/>") or iter!.skipIfNext(" />")) {
+    iter.skipIfNext("</slice>");
+  } else if (iter.skipIfNext("/>") or iter.skipIfNext(" />")) {
     // Do nothing
   } else {
     panic("<slice should end in > or />");
   }
 
-  ret Slice(newColor, notesCollector);
+  return Slice(newColor, notesCollector);
 }
 
 
-fn parseInlineNode(
-    notesCollector &!NotesCollector,
-    iter &!ParseIter)
+func parseInlineNode(
+    notesCollector &NotesCollector,
+    iter &ParseIter)
 Opt<InlineNode> {
-  if (not iter.previousWasWordChar and iter.nextIs("*")) {
-    ret Some<InlineNode>(parseBold(notesCollector, iter));
-  } else if (not iter.previousWasWordChar and iter.nextIs("_")) {
-    ret Some<InlineNode>(parseItalic(notesCollector, iter));
+  if not iter.PreviousChar().slice().isWordChar() and iter.nextIs("*") {
+    return Some<InlineNode>(parseBold(notesCollector, iter));
+  } else if (not iter.PreviousChar().slice().isWordChar() and iter.nextIs("_")) {
+    return Some<InlineNode>(parseItalic(notesCollector, iter));
   } else if (iter.nextIs("[#")) {
-    ret Some<InlineNode>(addInlineNote(notesCollector, iter));
-  } else if (not iter.previousWasWordChar and iter.nextIs("[")) {
-    ret Some<InlineNode>(addLink(&!iter));
-  } else if (not iter.previousWasWordChar and iter!.skipIfNext("`")) {
-    code = iter!.getUntilExpected("`");
-    ret Some<InlineNode>(InlineCode(code));
+    return Some<InlineNode>(addInlineNote(notesCollector, iter));
+  } else if (not iter.PreviousChar().slice().isWordChar() and iter.nextIs("[")) {
+    return Some<InlineNode>(addLink(&iter, false));
+  } else if (not iter.PreviousChar().slice().isWordChar() and iter.skipIfNext("`")) {
+    code = iter.getUntilExpected("`");
+    return Some<InlineNode>(InlineCode(code));
   } else {
-    ret None<InlineNode>();
+    return None<InlineNode>();
   }
 }
 
-fn parseInlines(
-    notesCollector &!NotesCollector,
-    iter &!ParseIter,
-    continueF &!IFunction1<mut, &!ParseIter, bool>)
+func parseInlines(
+    notesCollector &NotesCollector,
+    iter &ParseIter,
+    continueF &IFunction1<mut, &ParseIter, bool>)
 Compound {
   inners = List<InlineNode>();
 
-  currentTextNode! StrSlice = "".slice();
+  currentTextNode StrSlice = "".slice();
 
-  running! = true;
-  while (running and iter.hasNext()) {
-    if (not continueF!(iter)) {
-      mut running = false;
+  running = true;
+  while running and iter.hasNext() {
+    if not continueF(iter) {
+      set running = false;
     } else {
       maybeInner = parseInlineNode(notesCollector, iter);
-      if (not maybeInner.isEmpty()) {
-        if (currentTextNode != "") {
-          inners!.add(Text(mut currentTextNode = "".slice()));
+      if not maybeInner.isEmpty() {
+        if currentTextNode != "" {
+          inners.add(Text(set currentTextNode = "".slice()));
         }
-        inners!.add((maybeInner).get());
+        inners.add((maybeInner).get());
       } else {
         (maybeInner).drop();
-        mut currentTextNode = (currentTextNode + iter!.getNext()).slice();
+
+        iter.skipIfNext("\\");
+        nextChar = iter.getNext();
+
+        set currentTextNode = (currentTextNode + nextChar).slice();
       }
     }
   }
-  if (currentTextNode != "") {
-    inners!.add(Text(mut currentTextNode = "".slice()));
+  if currentTextNode != "" {
+    inners.add(Text(set currentTextNode = "".slice()));
   }
 
-  ret Compound(inners);
+  return Compound(inners);
 }
 
-fn parseBold(
-    notesCollector &!NotesCollector,
-    iter &!ParseIter)
+func parseBold(
+    notesCollector &NotesCollector,
+    iter &ParseIter)
 Bold {
-  iter!.skipExpect("*");
+  iter.skipExpect("*");
 
   compound =
     parseInlines(
-      &!notesCollector,
-      &!iter,
-      &!IFunction1<mut, &!ParseIter, bool>((iter){
-        if (not iter.hasNext()) {
+      &notesCollector,
+      &iter,
+      &IFunction1<mut, &ParseIter, bool>((iter) => {
+        if not iter.hasNext() {
           panic("Must end bold!");
-          ret false;
+          return false;
         } else if (iter.nextIs("*")) {
-          iter!.skipExpect("*");
-          ret false;
+          iter.skipExpect("*");
+          return false;
         } else {
-          ret true;
+          return true;
         }
       }));
 
-  ret Bold(compound);
+  return Bold(compound);
 }
 
-fn parseItalic(
-    notesCollector &!NotesCollector,
-    iter &!ParseIter)
+func parseItalic(
+    notesCollector &NotesCollector,
+    iter &ParseIter)
 Italic {
-  iter!.skipExpect("_");
+  iter.skipExpect("_");
 
   compound =
     parseInlines(
-      &!notesCollector,
-      &!iter,
-      &!IFunction1<mut, &!ParseIter, bool>((iter){
-        if (not iter.hasNext()) {
+      &notesCollector,
+      &iter,
+      &IFunction1<mut, &ParseIter, bool>((iter) => {
+        if not iter.hasNext() {
           panic("Must end italic!");
-          ret false;
+          return false;
         } else if (iter.nextIs("_")) {
-          iter!.skipExpect("_");
-          ret false;
+          iter.skipExpect("_");
+          return false;
         } else {
-          ret true;
+          return true;
         }
       }));
 
-  ret Italic(compound);
+  return Italic(compound);
 }
 
-fn parseLine(
-    notesCollector &!NotesCollector,
-    iter &!ParseIter,
-    continueF &!IFunction1<mut, &!ParseIter, bool>)
+func parseLine(
+    notesCollector &NotesCollector,
+    iter &ParseIter,
+    continueF &IFunction1<mut, &ParseIter, bool>)
 InlineNode {
-  ret parseInlines(
-    &!notesCollector,
-    &!iter,
-    &!IFunction1<mut, &!ParseIter, bool>((iter){
-      ret continueF!(iter) and iter.hasNext();
+  return parseInlines(
+    &notesCollector,
+    &iter,
+    &IFunction1<mut, &ParseIter, bool>((iter) => {
+      return continueF(iter) and iter.hasNext();
     }));
 }
 
 
 
-fn parseTextUntil(
-    iter &!ParseIter,
-    continueF &!IFunction1<mut, &!ParseIter, bool>)
+func parseTextUntil(
+    iter &ParseIter,
+    continueF &IFunction1<mut, &ParseIter, bool>)
 StrSlice {
-  code! StrSlice = "".slice();
+  code StrSlice = "".slice();
 
-  running! = true;
-  while (running and iter.hasNext()) {
-    if (not continueF!(iter)) {
-      mut running = false;
+  running = true;
+  while running and iter.hasNext() {
+    if not continueF(iter) {
+      set running = false;
     } else {
-      mut code = (code + iter!.getNext()).slice();
+      set code = (code + iter.getNext()).slice();
     }
   }
 
-  ret code;
+  return code;
 }
 
 
-fn parseCodeItem(notesCollector &!NotesCollector, iter &!ParseIter) CodeItem {
+func parseCodeItem(notesCollector &NotesCollector, iter &ParseIter) CodeItem {
   // println("go");
 
-  iter!.skipExpect("```");
+  iter.skipExpect("```");
 
 // println("ko");
 
   lang =
       parseTextUntil(
-          &!iter,
-          &!IFunction1<mut, &!ParseIter, bool>((it){
-            if (not it.hasNext()) {
+          &iter,
+          &IFunction1<mut, &ParseIter, bool>((it) => {
+            if not it.hasNext() {
                panic("``` must have matching \\n```!");
             }
-            ret not it.nextIs("\n");
+            return not it.skipIfNext("\n");
           }));
-  if (lang.has(":")) {
+  if lang.contains(":") {
     panic("Language has : in it!");
   }
-  if (lang.has(" ")) {
+  if lang.contains(" ") {
     panic("Language has space in it!");
   }
-  if (lang.has("`")) {
+  if lang.contains("`") {
     panic("Language has ` in it!");
   }
 
@@ -518,200 +536,187 @@ fn parseCodeItem(notesCollector &!NotesCollector, iter &!ParseIter) CodeItem {
 
   code =
       parseChevronNoteAnchors(
-          &!notesCollector,
+          &notesCollector,
           parseTextUntil(
-              &!iter,
-              &!IFunction1<mut, &!ParseIter, bool>((it){
+              &iter,
+              &IFunction1<mut, &ParseIter, bool>((it) => {
 // println("bi");
 
-                if (not it.hasNext()) {
+                if not it.hasNext() {
 // println("mi");
 
                   panic("``` must have matching \\n```!");
                 }
 // println("di");
 
-                ret not it.nextIs("\n```");
+                return not it.nextIs("\n```");
               })));
 // println("vo");
-  ret CodeItem(lang, code.slice());
+  return CodeItem(lang, code.slice());
 }
 
-fn parseCodeArgs(iter &!ParseIter) List<StrSlice> {
+func parseCodeArgs(iter &ParseIter) List<StrSlice> {
   args = List<StrSlice>();
 
   // println("ante loop");
 
-  running! = true;
-  while (running) {
+  running = true;
+  while running {
 
     // println("moo");
 
-    while (iter!.skipIfNext(" ")) {}
+    while iter.skipIfNext(" ") { }
 
     // println("boo");
     
-    if (iter!.skipIfNext("\n")) {
+    if iter.skipIfNext("\n") {
       // println("zoo");
     
-      mut running = false;
-    } else if (iter!.skipIfNext("`")) {
+      set running = false;
+    } else if iter.skipIfNext("`") {
       // println("woo");
-      x = iter!.getUntilExpected("`");
-      args!.add(slice("`" + x + "`"));
+      x = iter.getUntilExpected("`");
+      args.add(slice("`" + x + "`"));
     } else {
       // println("xoo");
       // Get until whitespace
       arg = parseTextUntil(
-          &!iter,
-          &!IFunction1<mut, &!ParseIter, bool>((it){
-            if (not iter.hasNext()) {
+          &iter,
+          &IFunction1<mut, &ParseIter, bool>((it) => {
+            if not iter.hasNext() {
               panic("``` must have matching \\n```!");
             }
-            ret not iter.nextIs(" ") and not iter.nextIs("\n");
+            return not iter.nextIs(" ") and not iter.nextIs("\n");
           }));
       // println("koo");
-      args!.add(arg);
+      args.add(arg);
     }
   }
   // println("post loop");
 
-  ret args;
+  return args;
 }
 
-fn parseCodeSnippet(notesCollector &!NotesCollector, iter &!ParseIter) CodeSnippet {
-  args! = List<StrSlice>();
+func parseCodeSnippet(notesCollector &NotesCollector, iter &ParseIter) CodeSnippet {
+  args = List<StrSlice>();
   items = List<CodeItem>();
 
     // println("before loop");
-  running! = true;
-  while (running) {
+  running = true;
+  while running {
     // println("in an iter");
-    items!.add(parseCodeItem(notesCollector, iter));
+    items.add(parseCodeItem(notesCollector, iter));
 
-    vassert(iter.nextIs("\n```"));
-    iter!.skipExpect("\n");
+    vassert(iter.nextIs("\n```"), "Bad snippet end!");
+    iter.skipExpect("\n");
     
     // println("parsed item");
-    if (iter.hasNext() and iter!.skipIfNext("```:")) {
+    if iter.hasNext() and iter.skipIfNext("```:") {
       // Now we'll parse args that come after the language, like in:
       //   ```Vale
-      //   fn main() {
+      //   func main() {
       //     a = A();
       //   }
       //   ```: vstl/list.vale `struct A{}`
-      mut args = parseCodeArgs(iter);
-      mut running = false;
+      set args = parseCodeArgs(iter);
+      set running = false;
     }
-    if (not iter.hasNext() or iter!.skipIfNext("```\n")) {
+    if not iter.hasNext() or iter.skipIfNext("```\n") {
       // println("breaking");
-      mut running = false;
+      set running = false;
     }
     // println("end an iter");
   }
 
-  ret CodeSnippet(items, args);
+  return CodeSnippet(items, args);
 }
 
 
 // Looks through for any chevron notes like «mynote» and registers them with
 // the notes collector.
-fn parseChevronNoteAnchors(notesCollector &!NotesCollector, haystack StrSlice) str {
-  result! = "";
+func parseChevronNoteAnchors(notesCollector &NotesCollector, haystack StrSlice) str {
+  result = "";
 
-// println("ba");
+  iter = ParseIter(haystack);
 
-  iter = ParseIter(haystack, true);
-// println("na");
-
-  while (iter.hasNext()) {
-// println("va");
-
-    if (iter!.skipIfNext("«")) {
-// println("za");
-
-      noteName = iter!.getUntilExpected("»");
+  while iter.hasNext() {
+    if iter.skipIfNext("«") {
+      noteName = iter.getUntilExpected("»");
       id = addNamedNoteAnchor(notesCollector, noteName);
-      mut result = result + ("«" + id + "»");
+      set result = result + ("«" + id + "»");
     } else {
-// println("xa");
-
-      mut result = result + iter!.getNext();
-
-// println("la");
+      set result = result + iter.getNext();
     }
   }
-// println("ya");
 
-
-  ret result;
+  return result;
 }
 
 
-fn parseSection(
-    notesCollector &!NotesCollector,
-    iter &!ParseIter,
-    continueF &!IFunction1<mut, &!ParseIter, bool>)
+func parseSection(
+    notesCollector &NotesCollector,
+    iter &ParseIter,
+    continueF &IFunction1<mut, &ParseIter, bool>)
 Section {
   sectionMembers = List<SectionMember>();
 
-  while (continueF!(iter)) {
-    iter!.skipNewlines();
+  while continueF(iter) {
+    iter.skipNewlines();
 
-    if (iter.nextIs("```")) {
-      sectionMembers!.add(parseCodeSnippet(notesCollector, iter));
+    if iter.nextIs("```") {
+      sectionMembers.add(parseCodeSnippet(notesCollector, iter));
     } else if (iter.nextIs("#")) {
-      headerStrength! = 0;
-      while (iter!.skipIfNext("#")) {
-        mut headerStrength = headerStrength + 1;
+      headerStrength = 0;
+      while iter.skipIfNext("#") {
+        set headerStrength = headerStrength + 1;
       }
       headerContents =
           parseInlines(
-              &!notesCollector,
-              &!iter,
-              &!IFunction1<mut, &!ParseIter, bool>((it){
-                ret iter.hasNext() and not iter.nextIs("\n");
+              &notesCollector,
+              &iter,
+              &IFunction1<mut, &ParseIter, bool>((it) => {
+                return iter.hasNext() and not iter.nextIs("\n");
               }));
-      sectionMembers!.add(Header(headerStrength, headerContents));
+      sectionMembers.add(Header(headerStrength, headerContents));
     } else if (iter.nextIs("<<<<")) {
-      sectionMembers!.add(parseSplit(notesCollector, iter));
+      sectionMembers.add(parseSplit(notesCollector, iter));
     } else if (iter.nextIs(" * ") or iter.nextIs(" 1. ") or iter.nextIs(" . ")) {
-      sectionMembers!.add(
+      sectionMembers.add(
           parseList(
-              &!notesCollector,
-              &!iter,
-              &!IFunction1<mut, &!ParseIter, bool>((iter){
-                ret continueF!(iter) and not iter.nextIs("\n\n");
+              &notesCollector,
+              &iter,
+              &IFunction1<mut, &ParseIter, bool>((iter) => {
+                return continueF(iter) and not iter.nextIs("\n\n");
               })));
     } else if (iter.nextIs("> ")) {
-      sectionMembers!.add(
+      sectionMembers.add(
           parseQuote(
-              &!notesCollector,
-              &!iter,
-              &!IFunction1<mut, &!ParseIter, bool>((iter){
-                ret continueF!(iter) and not iter.nextIs("\n\n");
+              &notesCollector,
+              &iter,
+              &IFunction1<mut, &ParseIter, bool>((iter) => {
+                return continueF(iter) and not iter.nextIs("\n\n");
               })));
     } else if (iter.nextIs("! ")) {
-      sectionMembers!.add(
+      sectionMembers.add(
           parseCallout(
-              &!notesCollector,
-              &!iter,
-              &!IFunction1<mut, &!ParseIter, bool>((iter){
-                ret continueF!(iter) and not iter.nextIs("\n\n");
+              &notesCollector,
+              &iter,
+              &IFunction1<mut, &ParseIter, bool>((iter) => {
+                return continueF(iter) and not iter.nextIs("\n\n");
               })));
     } else {
       inlineNode =
           parseLine(
-              &!notesCollector,
-              &!iter,
-              &!IFunction1<mut, &!ParseIter, bool>((iter){
-                ret continueF!(iter) and not iter.nextIs("\n\n");
+              &notesCollector,
+              &iter,
+              &IFunction1<mut, &ParseIter, bool>((iter) => {
+                return continueF(iter) and not iter.nextIs("\n\n");
               }));
-      sectionMembers!.add(Paragraph(inlineNode));
+      sectionMembers.add(Paragraph(inlineNode));
     }
   }
 
-  ret Section(sectionMembers);
+  return Section(sectionMembers);
 }
 
 
@@ -720,98 +725,115 @@ Section {
 
 
 
-fn addLink(
-    iter &!ParseIter)
+func addLink(
+    iter &ParseIter,
+    allow_empty bool)
 Link {
-  iter!.skipExpect("[");
-  linkText = iter!.getUntilExpected("]");
-  iter!.skipExpect("(");
-  linkUrl = iter!.getUntilExpected(")");
-  ret Link(linkText, linkUrl);
+  iter.skipExpect("[");
+  linkText = iter.getUntilExpected("]");
+  iter.skipExpect("(");
+  linkUrlAndAttrsStr = iter.getUntilExpected(")");
+  if linkUrlAndAttrsStr.len() == 0 and allow_empty {
+    return Link(linkText, "".slice(), List<StrSlice>());
+  }
+  vassert(linkUrlAndAttrsStr.len() > 0, "Bad link!");
+  linkUrlAndAttrs = linkUrlAndAttrsStr.split(" ");
+  vassert(linkUrlAndAttrs.len() > 0, "Bad link!");
+  linkUrl = linkUrlAndAttrs.remove(0);
+  classes = List<StrSlice>();
+  foreach x in linkUrlAndAttrs {
+    if x.startsWith(".") {
+      classes.add(x.slice(1));
+    } else {
+      panic("Bad link attribute: {x}");
+    }
+  }
+
+  return Link(linkText, linkUrl, classes);
 }
 
 
-fn addInlineFullNote(
-    notesCollector &!NotesCollector,
+func addInlineFullNote(
+    notesCollector &NotesCollector,
     noteContents Section)
 int {
-  id = (mut notesCollector.nextId = notesCollector.nextId + 1);
-  notesCollector.ids!.add(id);
+  id = (set notesCollector.nextId = notesCollector.nextId + 1);
+  notesCollector.ids.add(id);
 
-  notesCollector.noteContentsById!.add(id, noteContents);
+  notesCollector.noteContentsById.add(id, noteContents);
 
-  ret id;
+  return id;
 }
 
-fn addNamedNoteAnchor(
-    notesCollector &!NotesCollector,
+func addNamedNoteAnchor(
+    notesCollector &NotesCollector,
     noteName StrSlice)
 int {
-  id = (mut notesCollector.nextId = notesCollector.nextId + 1);
-  notesCollector.ids!.add(id);
+  id = (set notesCollector.nextId = notesCollector.nextId + 1);
+  notesCollector.ids.add(id);
 
   vassert(
-      not notesCollector.idByName.has(noteName),
+      not notesCollector.idByName.ContainsKey(noteName),
       "Note " + noteName + " already exists!");
 
-  notesCollector.idByName!.add(noteName, id);
-  notesCollector.nameById!.add(id, noteName);
+  notesCollector.idByName.add(noteName, id);
+  notesCollector.nameById.add(id, noteName);
 
-  ret id;
+  return id;
 }
 
-fn addInlineNote(
-    notesCollector &!NotesCollector,
-    iter &!ParseIter)
+func addInlineNote(
+    notesCollector &NotesCollector,
+    iter &ParseIter)
 NoteAnchor {
-  iter!.skipExpect("[#");
+  iter.skipExpect("[#");
 
   // If theres just space after the hash, then we're defining the note's text inline.
-  if (iter!.skipIfNext(" ")) {
+  if iter.skipIfNext(" ") {
     subNotes = NotesCollector(0);
     subNoteContents =
         parseInlines(
-            &!subNotes,
-            &!iter,
-            &!IFunction1<mut, &!ParseIter, bool>((iter){
-              if (not iter.hasNext()) {
+            &subNotes,
+            &iter,
+            &IFunction1<mut, &ParseIter, bool>((iter) => {
+              if not iter.hasNext() {
                 panic("Must end note!");
               }
-              ret not iter!.skipIfNext("]");
+              return not iter.skipIfNext("]");
             }));
 
     paragraph = Paragraph(subNoteContents);
     section = Section(List<SectionMember>());
-    section.members!.add(paragraph);
+    section.members.add(paragraph);
 
-    ret NoteAnchor(addInlineFullNote(notesCollector, section));
+    return NoteAnchor(addInlineFullNote(notesCollector, section));
   } else {
     noteName =
-        iter!.parseTextUntil(
-            &!IFunction1<mut, &!ParseIter, bool>((it){
-              if (not iter.hasNext()) {
+        iter.parseTextUntil(
+            &IFunction1<mut, &ParseIter, bool>((it) => {
+              if not iter.hasNext() {
                 panic("Must end note!");
               }
-              ret not iter!.skipIfNext("]");
+              return not iter.skipIfNext("]");
             }));
-    ret NoteAnchor(addNamedNoteAnchor(notesCollector, noteName));
+    return NoteAnchor(addNamedNoteAnchor(notesCollector, noteName));
   }
 }
 
-fn addSeparateNote(
-    self &!NotesCollector,
+func addSeparateNote(
+    self &NotesCollector,
     noteName StrSlice,
     note Section) {
   vassert(
-      self.idByName.has(noteName),
+      self.idByName.ContainsKey(noteName),
       "Note " + noteName + " doesn't exist!");
   id = self.idByName.get(noteName).get();
 
 
   vassert(
-      not self.noteContentsById.has(id),
+      not self.noteContentsById.ContainsKey(id),
       "Note " + noteName + " already has contents!");
 
-  self.noteContentsById!.add(id, note);
+  self.noteContentsById.add(id, note);
 }
 
