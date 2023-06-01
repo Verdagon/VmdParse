@@ -45,8 +45,14 @@ struct Paragraph {
 }
 impl SectionMember for Paragraph;
 
+struct Column {
+  rightward bool;
+  sections List<Section>;
+}
+
 struct Split {
-  columns List<List<Section>>;
+  alternating bool;
+  columns List<Column>;
 }
 impl SectionMember for Split;
 

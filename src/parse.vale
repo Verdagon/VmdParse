@@ -259,19 +259,20 @@ Split {
   iter.skipExpect("<<<<");
   iter.skipNewlines();
 
-  columns = List<List<Section>>();
+  columns = List<Column>();
 
-  running = true;
-  while running {
+  alternating = false;
+  rightward = false;
+  while true {
+    columnSections = List<Section>();
+
     innerContinueF =
         IFunction1<mut, &ParseIter, bool>((iter) => {
           if not iter.hasNext() {
             panic("<<<< must end with \/\/\/\/");
           }
-          return not iter.nextIs("\/\/\/\/") and not iter.nextIs(">>>>");
+          return not iter.nextIs("\/\/\/\/") and not iter.nextIs("\\\\\\\\") and not iter.nextIs(">>>>");
         });
-
-    columnSections = List<Section>();
 
     while innerContinueF(iter) {
       columnSections.add(
@@ -284,16 +285,25 @@ Split {
       iter.skipNewlines();
     }
 
-    columns.add(columnSections);
+    column = Column(rightward, columnSections);
 
-    set running = iter.skipIfNext("\/\/\/\/");
+    columns.add(column);
+
+    if iter.skipIfNext("\/\/\/\/") {
+      set rightward = true;
+    } else if iter.skipIfNext("\\\\\\\\") {
+      set alternating = true;
+      set rightward = false;
+    } else {
+      break;
+    }
     iter.skipNewlines();
   }
 
   iter.skipNewlines();
   iter.skipExpect(">>>>");
 
-  return Split(columns);
+  return Split(alternating, columns);
 }
 
 
@@ -477,19 +487,14 @@ InlineNode {
 
 
 
-func parseTextUntil(
+func parseTextWhile(
     iter &ParseIter,
     continueF &IFunction1<mut, &ParseIter, bool>)
 StrSlice {
   code StrSlice = "".slice();
 
-  running = true;
-  while running and iter.hasNext() {
-    if not continueF(iter) {
-      set running = false;
-    } else {
-      set code = (code + iter.getNext()).slice();
-    }
+  while iter.hasNext() and continueF(iter) {
+    set code = (code + iter.getNext()).slice();
   }
 
   return code;
@@ -504,7 +509,7 @@ func parseCodeItem(notesCollector &NotesCollector, iter &ParseIter) CodeItem {
 // println("ko");
 
   lang =
-      parseTextUntil(
+      parseTextWhile(
           &iter,
           &IFunction1<mut, &ParseIter, bool>((it) => {
             if not it.hasNext() {
@@ -522,8 +527,6 @@ func parseCodeItem(notesCollector &NotesCollector, iter &ParseIter) CodeItem {
     panic("Language has ` in it!");
   }
 
-// println("bo " + lang);
-
   // We register the chevron notes here and leave the code mostly untouched, because:
   // - If we slice up the code into a Compound with Text and NoteAnchor, then
   //   its harder later on to merge the text parts of the code back together to
@@ -537,50 +540,38 @@ func parseCodeItem(notesCollector &NotesCollector, iter &ParseIter) CodeItem {
   code =
       parseChevronNoteAnchors(
           &notesCollector,
-          parseTextUntil(
+          parseTextWhile(
               &iter,
               &IFunction1<mut, &ParseIter, bool>((it) => {
-// println("bi");
-
                 if not it.hasNext() {
-// println("mi");
-
                   panic("``` must have matching \\n```!");
                 }
-// println("di");
-
-                return not it.nextIs("\n```");
+                if it.nextIs("\n```") {
+                  it.skipExpect("\n");
+                  vassert(iter.nextIs("```"), "Bad code item end!");
+                  return false;
+                }
+                return true;
               })));
-// println("vo");
   return CodeItem(lang, code.slice());
 }
 
 func parseCodeArgs(iter &ParseIter) List<StrSlice> {
   args = List<StrSlice>();
 
-  // println("ante loop");
-
   running = true;
   while running {
 
-    // println("moo");
-
     while iter.skipIfNext(" ") { }
 
-    // println("boo");
-    
     if iter.skipIfNext("\n") {
-      // println("zoo");
-    
       set running = false;
     } else if iter.skipIfNext("`") {
-      // println("woo");
       x = iter.getUntilExpected("`");
       args.add(slice("`" + x + "`"));
     } else {
-      // println("xoo");
       // Get until whitespace
-      arg = parseTextUntil(
+      arg = parseTextWhile(
           &iter,
           &IFunction1<mut, &ParseIter, bool>((it) => {
             if not iter.hasNext() {
@@ -588,11 +579,9 @@ func parseCodeArgs(iter &ParseIter) List<StrSlice> {
             }
             return not iter.nextIs(" ") and not iter.nextIs("\n");
           }));
-      // println("koo");
       args.add(arg);
     }
   }
-  // println("post loop");
 
   return args;
 }
@@ -601,17 +590,19 @@ func parseCodeSnippet(notesCollector &NotesCollector, iter &ParseIter) CodeSnipp
   args = List<StrSlice>();
   items = List<CodeItem>();
 
-    // println("before loop");
-  running = true;
-  while running {
-    // println("in an iter");
+  while true {
     items.add(parseCodeItem(notesCollector, iter));
 
-    vassert(iter.nextIs("\n```"), "Bad snippet end!");
-    iter.skipExpect("\n");
+    vassert(iter.nextIs("```"), "Bad snippet end!");
+    if not iter.hasNext() {
+      break;
+    }
+    if iter.nextIs("```\n") {
+      iter.skipExpect("```");
+      break;
+    }
     
-    // println("parsed item");
-    if iter.hasNext() and iter.skipIfNext("```:") {
+    if iter.skipIfNext("```:") {
       // Now we'll parse args that come after the language, like in:
       //   ```Vale
       //   func main() {
@@ -619,13 +610,10 @@ func parseCodeSnippet(notesCollector &NotesCollector, iter &ParseIter) CodeSnipp
       //   }
       //   ```: vstl/list.vale `struct A{}`
       set args = parseCodeArgs(iter);
-      set running = false;
+      break;
     }
-    if not iter.hasNext() or iter.skipIfNext("```\n") {
-      // println("breaking");
-      set running = false;
-    }
-    // println("end an iter");
+
+    // continue
   }
 
   return CodeSnippet(items, args);
@@ -809,7 +797,7 @@ NoteAnchor {
     return NoteAnchor(addInlineFullNote(notesCollector, section));
   } else {
     noteName =
-        iter.parseTextUntil(
+        iter.parseTextWhile(
             &IFunction1<mut, &ParseIter, bool>((it) => {
               if not iter.hasNext() {
                 panic("Must end note!");
